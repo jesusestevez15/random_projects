@@ -1,0 +1,274 @@
+import cv2
+import numpy as np
+from matplotlib import pyplot as plt
+
+# Características de las cámaras:
+# Resolución: 2.0 MP, 1080P (640x480)
+# Tamaño de la diagonal del sensor: 0.2362204724409449 ''
+# Tamaño del píxel: 0.0075 mm/pix
+# Focal: 3.6 mm
+# Dimensiones (L x W x H): 91 mm x 70 mm x 35 mm
+
+
+def errorcalib(objpoints, rvecsL, rvecsR, tvecsL, tvecsR, mtxL, mtxR, distL, distR):
+
+    mean_errorL = 0
+    mean_errorR = 0
+
+    for i in range(len(objpoints)):
+        imgpointsL2, _ = cv2.projectPoints(objpoints[i], rvecsL[i], tvecsL[i], mtxL, distL)
+        imgpointsR2, _ = cv2.projectPoints(objpoints[i], rvecsR[i], tvecsR[i], mtxR, distR)
+
+        errorL = cv2.norm(imgpointsL[i], imgpointsL2, cv2.NORM_L2) / len(imgpointsL2)
+        errorR = cv2.norm(imgpointsR[i], imgpointsR2, cv2.NORM_L2) / len(imgpointsR2)
+
+        mean_errorL += errorL
+        mean_errorR += errorR
+
+    return mean_errorL, mean_errorR
+
+
+criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 60, 0.000001)
+
+objp = np.zeros((6*7, 3), np.float32)
+objp[:,:2] = np.mgrid[0:7, 0:6].T.reshape(-1,2)
+
+objpoints = []
+imgpointsL = []
+imgpointsR = []
+disparity = []
+
+size = (480, 640)
+
+print('Iniciando cámaras...')
+
+imagesL = cv2.VideoCapture(1)
+imagesR = cv2.VideoCapture(2)
+
+photos = 1
+
+print('Buscando tablero de ajedrez...')
+
+while True:
+
+    trueL, imgL = imagesL.read()
+    trueR, imgR = imagesR.read()
+
+    concatenate1 = np.concatenate((imgL, imgR), axis=1)
+    concatenate = np.concatenate((imgL, imgR), axis=1)
+    cv2.line(concatenate, (0, 0), (1280, 0), (0, 255, 0), 1)
+    cv2.line(concatenate, (0, int(size[0] / 8)), (1280, int(size[0] / 8)), (0, 255, 0), 1)
+    cv2.line(concatenate, (0, int(size[0] / 4)), (1280, int(size[0] / 4)), (0, 255, 0), 1)
+    cv2.line(concatenate, (0, int(size[0] * 3 / 8)), (1280, int(size[0] * 3 / 8)), (0, 255, 0), 1)
+    cv2.line(concatenate, (0, int(size[0] / 2)), (1280, int(size[0] / 2)), (0, 255, 0), 1)
+    cv2.line(concatenate, (0, int(size[0] * 5 / 8)), (1280, int(size[0] * 5 / 8)), (0, 255, 0), 1)
+    cv2.line(concatenate, (0, int(size[0] * 3 / 4)), (1280, int(size[0] * 3 / 4)), (0, 255, 0), 1)
+    cv2.line(concatenate, (0, int(size[0] * 7 / 8)), (1280, int(size[0] * 7 / 8)), (0, 255, 0), 1)
+    cv2.line(concatenate, (0, int(size[0])), (1280, int(size[0])), (0, 255, 0), 1)
+
+    combined = cv2.addWeighted(imgL, 0.3, imgR, 0.3, 0)
+
+    grayL = cv2.cvtColor(imgL, cv2.COLOR_BGR2GRAY)
+    grayR = cv2.cvtColor(imgR, cv2.COLOR_BGR2GRAY)
+
+    istrueL, cornL = cv2.findChessboardCorners(grayL, (7, 6),
+                                             cv2.CALIB_CB_ADAPTIVE_THRESH +
+                                             cv2.CALIB_CB_FAST_CHECK +
+                                             cv2.CALIB_CB_NORMALIZE_IMAGE)
+
+    istrueR, cornR = cv2.findChessboardCorners(grayR, (7, 6),
+                                             cv2.CALIB_CB_ADAPTIVE_THRESH +
+                                             cv2.CALIB_CB_FAST_CHECK +
+                                             cv2.CALIB_CB_NORMALIZE_IMAGE)
+
+    if istrueL and istrueR:
+
+        objpoints.append(objp)
+
+        cornersL = cv2.cornerSubPix(grayL, cornL, (11,11), (-1, -1), criteria)
+        cornersR = cv2.cornerSubPix(grayR, cornR, (11, 11), (-1, -1), criteria)
+
+        imgpointsL.append(cornersL)
+        imgpointsR.append(cornersR)
+
+        cv2.drawChessboardCorners(imgL, (7,6), cornersL, trueL)
+        cv2.drawChessboardCorners(imgR, (7,6), cornersR, trueR)
+        concatenate1 = np.concatenate((imgL, imgR), axis=1)
+
+        cv2.imwrite('concatenate1_tablero_' + str(photos - 1) + '.png', concatenate1)
+        cv2.imwrite('combined_tablero_' + str(photos) + '.png', combined)
+        cv2.imwrite('concatenate_tablero_' + str(photos) + '.png', concatenate)
+
+        print(photos)
+        photos = photos + 1
+
+    #cv2.imshow('cornersL', imgL)
+    #cv2.imshow('cornersR', imgR)
+    cv2.imshow('concatenate', concatenate)
+    cv2.imshow('concatenate1', concatenate1)
+    cv2.imshow('combined', combined)
+
+    if cv2.waitKey(2000) & 0xff == ord('q'):
+        break
+
+print('Calibrando las cámaras individualmente...')
+
+retL, mtxL, distL, rvecsL, tvecsL = cv2.calibrateCamera(objpoints, imgpointsL, grayL.shape[::-1], None, None)
+retR, mtxR, distR, rvecsR, tvecsR = cv2.calibrateCamera(objpoints, imgpointsR, grayR.shape[::-1], None, None)
+
+print('Parámetros internos de la cámara izquierda: ', mtxL, distL)
+print('Parámetros internos de la cámara derecha: ', mtxR, distR)
+
+print('Optimizando la matriz de ambas cámaras...')
+
+hL,  wL = imgL.shape[:2]
+hR,  wR = imgR.shape[:2]
+
+newcameramtxL, roiL = cv2.getOptimalNewCameraMatrix(mtxL, distL, (wL, hL), 1, (wL, hL), True)
+newcameramtxR, roiR = cv2.getOptimalNewCameraMatrix(mtxR, distR, (wR, hR), 1, (wR, hR), True)
+
+print('Calculando el error del calibrado individual...')
+
+mean_errorL, mean_errorR = errorcalib(objpoints, rvecsL, rvecsR, tvecsL, tvecsR, mtxL, mtxR, distL, distR)
+
+print("Error total de la calibración de la cámara izquierda: {}".format(mean_errorL / len(objpoints)))
+print("Error total de la calibración de la cámara derecha: {}".format(mean_errorR / len(objpoints)))
+
+print('Calibración estéreo...')
+
+retval, mtxL, distL, mtxR, distR, R, T, E, F = cv2.stereoCalibrate(objpoints, imgpointsL, imgpointsR, mtxL, distL, mtxR,
+                                                                   distR, size)
+print(mtxL)
+print(mtxR)
+retval, mtxL, distL, mtxR, distR, R, T, E, F, rms_error1 = cv2.stereoCalibrateExtended(objpoints, imgpointsL, imgpointsR,
+                                                                                      mtxL, distL, mtxR, distR, size, R,
+                                                                                      T)
+print(F)
+print(E)
+
+rms_error = np.sum(rms_error1)/len(rms_error1)
+print("Error total de la calibración estéreo: {}".format(rms_error))
+
+print('Rectificación estéreo...')
+
+RL, RR, PL, PR, Q, roiL1, roiR1 = cv2.stereoRectify(mtxL, distL, mtxR, distR, size, R, T)
+
+print(mtxL)
+print(mtxR)
+print(newcameramtxL)
+print(newcameramtxR)
+print(distL)
+print(distR)
+print(Q)
+
+print('Eliminando distorsión...')
+
+imagesL = cv2.VideoCapture(1)
+imagesR = cv2.VideoCapture(2)
+
+# Eliminamos la distorsión
+mapL1, mapL2 = cv2.initUndistortRectifyMap(mtxL, distL, RL, PL, (640, 480), m1type=cv2.CV_32FC1)
+mapR1, mapR2 = cv2.initUndistortRectifyMap(mtxR, distR, RR, PR, (640, 480), m1type=cv2.CV_32FC1)
+
+while True:
+
+    trueL, imgL = imagesL.read()
+    trueR, imgR = imagesR.read()
+
+    cv2.imshow('mapL1', mapL1)
+    cv2.imshow('mapL2', mapL2)
+    cv2.imshow('mapR1', mapR1)
+    cv2.imshow('mapR2', mapR2)
+
+    dstL = cv2.remap(imgL, mapL1, mapL2, interpolation=cv2.INTER_NEAREST, borderMode=cv2.BORDER_REPLICATE)
+    dstR = cv2.remap(imgR, mapR1, mapR2, interpolation=cv2.INTER_NEAREST, borderMode=cv2.BORDER_REPLICATE)
+
+    # Recortamos la imagen
+    xL, yL, wL, hL = roiL
+    xR, yR, wR, hR = roiR
+
+    concatenate1 = np.concatenate((dstL, dstR), axis=1)
+    concatenate = np.concatenate((dstL, dstR), axis=1)
+
+    y = concatenate.shape[0]
+    x = concatenate.shape[1]
+
+    cv2.line(concatenate, (0,0), (1280, 0), (0, 255, 0), 1)
+    cv2.line(concatenate, (0, int(y / 8)), (1280, int(y / 8)), (0, 255, 0), 1)
+    cv2.line(concatenate, (0, int(y / 4)), (1280, int(y / 4)), (0, 255, 0), 1)
+    cv2.line(concatenate, (0, int(y * 3 / 8)), (1280, int(y * 3 / 8)), (0, 255, 0), 1)
+    cv2.line(concatenate, (0, int(y / 2)), (1280, int(y / 2)), (0, 255, 0), 1)
+    cv2.line(concatenate, (0, int(y * 5 / 8)), (1280, int(y * 5 / 8)), (0, 255, 0), 1)
+    cv2.line(concatenate, (0, int(y * 3 / 4)), (1280, int(y * 3 / 4)), (0, 255, 0), 1)
+    cv2.line(concatenate, (0, int(y * 7 / 8)), (1280, int(y * 7 / 8)), (0, 255, 0), 1)
+    cv2.line(concatenate, (0, int(y)), (1280, int(y)), (0, 255, 0), 1)
+    cv2.imshow('dstL / dstR', concatenate)
+
+    combined = cv2.addWeighted(dstL, 0.3, dstR, 0.3, 0)
+    cv2.imshow('combined', combined)
+
+    if cv2.waitKey(0) & 0xff == ord('q'):
+        break
+    elif cv2.waitKey(0) & 0xff == ord('s'):
+        cv2.imwrite('concatenate_calibrado.png', concatenate)
+
+cv2.imwrite('combined_calibrado.png', combined)
+
+plt.subplot(221), plt.imshow(mapL1, cmap=plt.get_cmap('plasma')), plt.title('mapL1')
+plt.subplot(222), plt.imshow(mapL2, cmap=plt.get_cmap('plasma')), plt.title('mapL2')
+plt.subplot(223), plt.imshow(mapR1, cmap=plt.get_cmap('plasma')), plt.title('mapR1')
+plt.subplot(224), plt.imshow(mapR2, cmap=plt.get_cmap('plasma')), plt.title('mapR2')
+plt.show()
+
+L = ['\n\n Número de fotos tomadas: ', str(photos-1),
+     '\n\n Matriz de cámara izquierda (mtxL): \n\n', str(mtxL),
+     '\n\n Matriz de cámara derecha (mtxR): \n\n', str(mtxR),
+     '\n\n Matriz óptima de cámara izquierda (newcameramtxL): \n\n', str(newcameramtxL),
+     '\n\n Matriz óptima de cámara derecha (newcameramtxR): \n\n', str(newcameramtxR),
+     '\n\n Vector de distorsión de cámara izquierda (dstL): \n\n', str(distL),
+     '\n\n Vector de distorsión de cámara derecha (dstR): \n\n', str(distR),
+     '\n\n Matriz Q: \n\n', str(Q),
+     '\n\n Error de calibración cámara izquierda (mean_errorL): \n\n', str(mean_errorL / len(objpoints)),
+     '\n\n Error de calibración cámara derecha (mean_errorR): \n\n', str(mean_errorR / len(objpoints)),
+     '\n\n Error total de la calibración estéreo (rms_error): \n\n', str(rms_error)
+     ]
+
+file = open('datos_calibracion.txt', 'w')
+file.write('Datos de la calibración:')
+file.writelines(L)
+file.close()
+
+cv2.waitKey(0)
+
+while True:
+    if cv2.waitKey(0) & 0xff == ord('s'):
+        np.save('objpoints', objpoints)
+        np.save('imgpointsL', imgpointsL)
+        np.save('imgpointsR', imgpointsR)
+        np.save('mtxL', mtxL)
+        np.save('mtxR', mtxR)
+        np.save('distL', distL)
+        np.save('distR', distR)
+        np.save('newcameramtxL', newcameramtxL)
+        np.save('newcameramtxR', newcameramtxR)
+        np.save('roiL', roiL)
+        np.save('roiR', roiR)
+        np.save('R', R)
+        np.save('T', T)
+        np.save('E', E)
+        np.save('F', F)
+        np.save('RL', RL)
+        np.save('RR', RR)
+        np.save('PL', PL)
+        np.save('PR', PR)
+        np.save('Q', Q)
+        np.save('roiL1', roiL1)
+        np.save('roiR1', roiR1)
+        np.save('mapL1', mapL1)
+        np.save('mapL2', mapL2)
+        np.save('mapR1', mapR1)
+        np.save('mapR2', mapR2)
+
+        break
+    elif cv2.waitKey(0) & 0xff == ord('q'):
+        break
