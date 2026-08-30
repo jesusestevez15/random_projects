@@ -11,7 +11,7 @@ from sklearn.metrics import accuracy_score
 class MonitoreoSatelitalApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Monitoreo Satelital 🚀")
+        self.root.title("Monitoreo Satelital")
         self.root.geometry("800x600")
         
         # Título
@@ -35,25 +35,25 @@ class MonitoreoSatelitalApp:
         self.boton_prediccion = tk.Button(self.menu, text="Predicción de Terrenos", command=self.predecir_terreno)
         self.boton_prediccion.grid(row=0, column=2, padx=10)
 
-        # 🔹 Crear un contenedor para organizar la imagen y el slider
+        # Crear un contenedor para organizar la imagen y el slider
         self.contenedor = tk.Frame(root)
         self.contenedor.pack(fill="both", expand=True)
 
-        # 🔹 Panel para mostrar la imagen
+        # Panel para mostrar la imagen
         self.panel_resultados = tk.Label(self.contenedor)
         self.panel_resultados.grid(row=0, column=10, padx=200, pady=0)
         
-        # 🔹 Primero creamos el slider
+        # Primero creamos el slider
         self.slider = tk.Scale(root, from_=2, to=10, orient="horizontal", label="Número de Clusters (K)",
                                command=self.clasificar_terreno)
         self.slider.set(3)  # Valor inicial
         self.slider.pack(side="bottom", fill="x", padx=10, pady=5)
 
-        # 🔹 Luego creamos el botón
+        # Luego creamos el botón
         self.boton_segmentar = tk.Button(root, text="Segmentar", command=self.clasificar_terreno)
         self.boton_segmentar.pack(side="bottom", padx=10, pady=5)
 
-        # 🔹 Finalmente, ejecutamos la segmentación inicial (después de definir el slider)
+        # Finalmente, ejecutamos la segmentación inicial (después de definir el slider)
         self.imagen = None
         self.imagen_tk = None
         self.clasificar_terreno()
