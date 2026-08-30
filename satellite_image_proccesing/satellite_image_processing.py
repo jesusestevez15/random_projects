@@ -81,17 +81,17 @@ class AnalisisCambio:
 
 # PRUEBA DEL CÓDIGO
 # Cargar imágenes de prueba (se necesitan imágenes de satélite en escala de grises para NDVI)
-imagen_satelite = ImagenSatelital("2020-07-01-00_00_2020-07-01-23_59_Sentinel-2_Quarterly_Mosaics_NDVI.tiff")
+imagen_satelite = ImagenSatelital("images/2020-07-01-00_00_2020-07-01-23_59_Sentinel-2_Quarterly_Mosaics_NDVI.tiff")
 ancho, alto = imagen_satelite.tamaño_imagen()
 imagen_rgb_1 = imagen_satelite.obtener_imagen()
-imagen_satelite = ImagenSatelital("2024-07-01-00_00_2024-07-01-23_59_Sentinel-2_Quarterly_Mosaics_NDVI.tiff")
+imagen_satelite = ImagenSatelital("images/2024-07-01-00_00_2024-07-01-23_59_Sentinel-2_Quarterly_Mosaics_NDVI.tiff")
 imagen_rgb_2 = imagen_satelite.obtener_imagen()
 
 # Crear objeto de NDVI
-ndvi1 = ImagenNDVI("2020-07-01-00_00_2020-07-01-23_59_Sentinel-2_Quarterly_Mosaics_NDVI.tiff", "2020-07-01-00_00_2020-07-01-23_59_Sentinel-2_Quarterly_Mosaics_B04_(Raw).tiff", "2024-07-01-00_00_2024-07-01-23_59_Sentinel-2_Quarterly_Mosaics_B08_(Raw).tiff")
+ndvi1 = ImagenNDVI("images/2020-07-01-00_00_2020-07-01-23_59_Sentinel-2_Quarterly_Mosaics_NDVI.tiff", "images/2020-07-01-00_00_2020-07-01-23_59_Sentinel-2_Quarterly_Mosaics_B04_(Raw).tiff", "images/2024-07-01-00_00_2024-07-01-23_59_Sentinel-2_Quarterly_Mosaics_B08_(Raw).tiff")
 ndvi_img1 = ndvi1.obtener_ndvi_visualizacion()
 
-ndvi2 = ImagenNDVI("2024-07-01-00_00_2024-07-01-23_59_Sentinel-2_Quarterly_Mosaics_NDVI.tiff", "2024-07-01-00_00_2024-07-01-23_59_Sentinel-2_Quarterly_Mosaics_B04_(Raw).tiff", "2024-07-01-00_00_2024-07-01-23_59_Sentinel-2_Quarterly_Mosaics_B08_(Raw).tiff")
+ndvi2 = ImagenNDVI("images/2024-07-01-00_00_2024-07-01-23_59_Sentinel-2_Quarterly_Mosaics_NDVI.tiff", "images/2024-07-01-00_00_2024-07-01-23_59_Sentinel-2_Quarterly_Mosaics_B04_(Raw).tiff", "images/2024-07-01-00_00_2024-07-01-23_59_Sentinel-2_Quarterly_Mosaics_B08_(Raw).tiff")
 ndvi_img2 = ndvi2.obtener_ndvi_visualizacion()
 
 # Guardar NDVI para comparación

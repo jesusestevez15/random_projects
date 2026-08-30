@@ -111,9 +111,9 @@ class NDVICalculo:
         return img_ndvi
     
 # Imágenes de prueba
-img1 = ImagenSatelital("2020-07-01-00_00_2020-07-01-23_59_Sentinel-2_Quarterly_Mosaics_B04_(Raw).tiff")
+img1 = ImagenSatelital("images/2020-07-01-00_00_2020-07-01-23_59_Sentinel-2_Quarterly_Mosaics_B04_(Raw).tiff")
 img1.info()
-img2 = ImagenSatelital("2020-07-01-00_00_2020-07-01-23_59_Sentinel-2_Quarterly_Mosaics_B08_(Raw).tiff")
+img2 = ImagenSatelital("images/2020-07-01-00_00_2020-07-01-23_59_Sentinel-2_Quarterly_Mosaics_B08_(Raw).tiff")
 img2.info()
 
 rgb1 = img1.obtener_imagen()

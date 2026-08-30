@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import rasterio
 
-image_path = "2020-07-01-00_00_2020-07-01-23_59_Sentinel-2_Quarterly_Mosaics_B04_(Raw).tiff"
+image_path = "../images/2020-07-01-00_00_2020-07-01-23_59_Sentinel-2_Quarterly_Mosaics_B04_(Raw).tiff"
 
 dataset = rasterio.open(image_path)
 

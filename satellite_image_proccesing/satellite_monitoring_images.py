@@ -7,6 +7,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+import rasterio
 
 class MonitoreoSatelitalApp:
     def __init__(self, root):
@@ -60,10 +61,20 @@ class MonitoreoSatelitalApp:
 
     def cargar_imagen(self):
         """Abre un diálogo para cargar una imagen."""
-        archivo_imagen = filedialog.askopenfilename(title="Seleccionar Imagen", filetypes=(("Archivos JPG", "*.jpg"), ("Archivos PNG", "*.png"), ("Archivos TIFF", "*.tiff")))
+        archivo_imagen = filedialog.askopenfilename(title="Seleccionar Imagen", filetypes=(("Archivos TIFF", "*.tiff"), ("Archivos JPG", "*.jpg"), ("Archivos PNG", "*.png")))
         if archivo_imagen:
             # Intentar cargar la imagen
-            self.imagen = cv2.imread(archivo_imagen)
+            try:
+                with rasterio.open(archivo_imagen) as src:
+                    datos = src.read(1)  # lee la primera banda; ajusta según tus bandas
+
+                # Normalizar a 0-255 para poder visualizar/procesar con OpenCV
+                datos_norm = cv2.normalize(datos, None, 0, 255, cv2.NORM_MINMAX)
+                self.imagen = datos_norm.astype(np.uint8)
+            except Exception as e:
+                self.imagen = None
+                messagebox.showerror("Error", f"No se pudo leer el archivo: {e}")
+                return
     
         # Verificar si la imagen fue cargada correctamente
         if self.imagen is None:
@@ -100,18 +111,36 @@ class MonitoreoSatelitalApp:
         self.panel_resultados.config(image=self.imagen_tk)
 
     def detectar_incendios(self):
-        """Detectar fuego en la imagen térmica."""
+        """Detectar posibles zonas quemadas/afectadas por incendio usando el NDVI."""
         if self.imagen is None:
             return
 
-        imagen_termica = np.random.randint(100, 255, (self.imagen.shape[0], self.imagen.shape[1]), dtype=np.uint8)
-        umbral_fuego = 200
-        mascara_fuego = imagen_termica > umbral_fuego
+        # self.imagen contiene el NDVI ya calculado (rango típico -1 a 1)
+        ndvi = self.imagen.astype(np.float32)
+        
+        # Si el NDVI tiene más de 2 dimensiones (por ejemplo, 3 canales), quedarse con uno solo
+        if ndvi.ndim == 3:
+            ndvi = ndvi[:, :, 0]  # asume que el NDVI está en el primer canal
 
-        imagen_color = cv2.applyColorMap(imagen_termica, cv2.COLORMAP_HOT)
-        imagen_color[mascara_fuego] = [255, 0, 0]
+        # Normalizar el NDVI a 0-255 solo para poder visualizarlo con un mapa de color
+        ndvi_norm = cv2.normalize(ndvi, None, 0, 255, cv2.NORM_MINMAX)
+        imagen_termica = ndvi_norm.astype(np.uint8)
 
-        self.imagen_tk = ImageTk.PhotoImage(image=Image.fromarray(imagen_color))
+        # Umbral sobre el NDVI real (no sobre la versión normalizada)
+        # Valores bajos/negativos de NDVI = vegetación quemada, suelo desnudo, ceniza
+        umbral_fuego = -0.1  # valor ajustable entre -1 (quemado) y 1 (vegetación)
+        mascara_fuego = ndvi < umbral_fuego
+
+        # Aplicar mapa de color viridis
+        imagen_color = cv2.applyColorMap(imagen_termica, cv2.COLORMAP_VIRIDIS)
+
+        # Marcar zonas quemadas en rojo
+        imagen_color[mascara_fuego] = [0, 0, 255]  # rojo en BGR
+
+        # Convertir a RGB antes de pasar a PIL (si no, los colores salen invertidos)
+        imagen_rgb = cv2.cvtColor(imagen_color, cv2.COLOR_BGR2RGB)
+
+        self.imagen_tk = ImageTk.PhotoImage(image=Image.fromarray(imagen_rgb))
         self.panel_resultados.config(image=self.imagen_tk)
 
     def predecir_terreno(self):
