@@ -48,3 +48,4 @@ for i in range(1, N + 1):
     for j in range(1, N + 1):
         if s[i, j] == 1:
             plt.plot(i, j, '.', color='blue')
+plt.show()
